@@ -1,3 +1,4 @@
+# Day_Trading_Notes
 
 https://www.tradeciety.com/how-to-use-moving-averages/
 
