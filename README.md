@@ -3,19 +3,27 @@
 Day Trading Notes:
 
 https://www.tradeciety.com/how-to-use-moving-averages/
+
 https://www.investopedia.com/articles/active-trading/053115/average-rate-return-day-traders.asp
+
 https://www.udemy.com/course/testing-candlesticks/
 
 Machine Learning Notes:
 
 DataCamp
+
 https://medium.com/@belen.sanchez27/predicting-iris-flower-species-with-k-means-clustering-in-python-f6e46806aaee
+
 https://towardsdatascience.com/k-means-clustering-with-scikit-learn-6b47a369a83c
+
 https://www.techtrekking.com/how-to-plot-simple-and-candlestick-chart-using-python-pandas-matplotlib/
 
 https://medium.com/mlreview/a-simple-deep-learning-model-for-stock-price-prediction-using-tensorflow-30505541d877
+
 - TensorFlow
+
 https://medium.com/analytics-vidhya/using-machine-learning-to-predict-stock-prices-c4d0b23b029a
+
 https://www.datacamp.com/community/tutorials/tensorflow-tutorial
 
 
