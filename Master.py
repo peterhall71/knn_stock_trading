@@ -1,12 +1,12 @@
 ###https://scikit-learn.org/stable/modules/clustering.html
 
 
-###Master_v1.1.py
+###Master_v1.2.py
 
 #LIBRARIES
 import sys, os, shutil, statistics 
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import OPTICS, cluster_optics_dbscan
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -23,7 +23,6 @@ Raw_Data_Folder = 'Raw_Data_Storage_5min'
 #clustering
 Clustering = True
 Analysis = False
-Number_of_Clusters = 15
 
 #exectution
 Account_Value = 60000
@@ -93,40 +92,45 @@ class Test_Data:
                 self.shares = 0
         return
 
-def Cluster(fit_array, starting_point, order_indicator):
-    #if not primary array, remove existing cluster column
-    if order_indicator: fit_array = np.delete(fit_array, 44, axis=1)
+def Cluster(fit_array):
     
     ###https://scikit-learn.org/stable/modules/clustering.html#optics
-
+    ###https://github.com/dvida/cyoptics-clustering
+    
     #create K-Means classifier and fit data
-    km = KMeans(
-            n_clusters = Number_of_Clusters,
-            init = 'k-means++',
-            n_init = 10,
-            max_iter = 300,
-            tol = 1e-04,
-            precompute_distances = 'auto',
-            verbose = 0,
-            random_state=None,
-            copy_x = True,
-            n_jobs = 4,
-            algorithm = 'auto'
+    opt = OPTICS(
+            min_samples=5,
+            max_eps=np.inf,
+            metric='minkowski',
+            p=2,
+            metric_params=None,
+            cluster_method='xi',
+            eps=None,
+            xi=0.05,
+            predecessor_correction=True,
+            min_cluster_size=0.005,
+            algorithm='auto',
+            leaf_size=30,
+            n_jobs=None
             )
-    print('Applying Kmeans Clustering')
-    km.fit(fit_array)
+    
+    print('Applying OPTICS Clustering')
+    opt.fit(fit_array)
     
     #reshape cluster labels and concatenate
-    concatenated = np.concatenate((fit_array, np.reshape(km.labels_ + starting_point, (-1, 1))), axis = 1)
-    print('Total Record Count: ', len(fit_array))
+    concatenated = np.concatenate((fit_array, np.reshape(opt.labels_, (-1, 1))), axis = 1)
+    print('Total Record Count: ', len(concatenated))
+    cluster_labels = np.unique(opt.labels_)
+    cluster_labels = cluster_labels.tolist()
+    print(cluster_labels)
+    cluster_labels.remove(-1)
     
     #create avg cluster images
-    cluster_count = starting_point
-    while cluster_count < starting_point + Number_of_Clusters:
+    for i in cluster_labels:
         #create array for specific cluster based on cluster_count, then remove cluster column, print number of records in cluster
-        clus = concatenated[concatenated[:,44] == cluster_count]
+        clus = concatenated[concatenated[:,44] == i]
         clus = np.delete(clus, 44, axis=1)
-        print('Record Count,' , cluster_count,':', len(clus))
+        print('Record Count,' , i,':', len(clus))
         
         #find  mean of columns and reformat cluster dataset from one averaged 44 column row to set of 11 ohlc records
         clusavg = clus.mean(axis=0)
@@ -138,11 +142,10 @@ def Cluster(fit_array, starting_point, order_indicator):
             count += 1
 
         #configure plot, save image, and close
-        Candlestick_Plot(clusarray, cluster_count, 'Cluster_Images', cluster_count)
-        
-        cluster_count += 1
+        Candlestick_Plot(clusarray, i, 'Cluster_Images', i)
     
-    #remove prediction portion of the array
+    #remove unclustered records, remove prediction portion of the array
+    concatenated = concatenated[np.isin(concatenated[:,24], -1, invert=True)]
     concatenated_trimmed = np.delete(concatenated, np.s_[24:44], axis=1)
     
     #run analysis if indicated, return both arrays
@@ -210,19 +213,6 @@ def Candlestick_Plot(plot_data, plot_title, Folder_name, file_name):
     plt.savefig(os.path.join(Folder_name, '%d.png' %file_name), bbox_inches='tight')
     plt.close()
 
-def Input_and_Convert(message):
-    while True:
-        try:
-            #take comma delimited input and convert to list of integers
-            cluster_list = input(message)
-            cluster_list = cluster_list.split(',')
-            cluster_list = [int(x.strip()) for x in cluster_list]
-            break
-        except:
-            print('Invalid entry, please try again') 
-    return cluster_list
-
-
 #INITILIZATION
 
 if Initialization:
@@ -259,19 +249,14 @@ if Clustering:
 
     #cluster and assign labels, plot average clusters and save image to drive
     print('')
-    primary_clusters, primary_clusters_trimmed = Cluster(primary, 0, False)
-
-    secondary_list = Input_and_Convert('Secondary Clustering: ')
-    secondary = primary_clusters[np.isin(primary_clusters[:,44], secondary_list)]
-    secondary_clusters, secondary_clusters_trimmed = Cluster(secondary, 100, True)
+    primary_clusters, primary_clusters_trimmed = Cluster(primary)
 
     #delete downselected rows from primary and secondary arrays, concatenate primary_complete, secondary_complete, and teriary_clusters_trimmed
-    primary_complete = primary_clusters_trimmed[np.isin(primary_clusters_trimmed[:,24], secondary_list, invert=True)]
-    secondary_complete = secondary_clusters_trimmed
-    training_data = np.concatenate((primary_complete, secondary_complete), axis = 0)
+    training_data = primary_clusters_trimmed
     
     #save training_data to csv
     np.savetxt("Execution_Files\Training_Data.csv", np.array(training_data), delimiter=",")
+    exit()
 
 else:
     #load ready made training data
@@ -288,7 +273,15 @@ knn = KNN_Classifier()
 knn.fit(X_train, y_train)
 
 #take comma delimited input and convert to list of integers
-buy_indicators = Input_and_Convert('Buy Indicators: ')
+while True:
+    try:
+        #take comma delimited input and convert to list of integers
+        buy_indicators = input('Buy Indicators: ')
+        buy_indicators = cluster_list.split(',')
+        buy_indicators = [int(x.strip()) for x in buy_indicators]
+        break
+    except:
+        print('Invalid entry, please try again') 
 
 #load test datasets: X_test_1, X_test_2, etc. and initiate Main_Loop parameters
 live_counter = 0
