@@ -1,6 +1,7 @@
 # Automated_Trading_Program
 
-Day Trading Notes:
+
+## Day Trading Notes
 
 https://www.tradeciety.com/how-to-use-moving-averages/
 
@@ -8,9 +9,7 @@ https://www.investopedia.com/articles/active-trading/053115/average-rate-return-
 
 https://www.udemy.com/course/testing-candlesticks/
 
-Machine Learning Notes:
-
-DataCamp
+## Machine Learning Notes
 
 https://medium.com/@belen.sanchez27/predicting-iris-flower-species-with-k-means-clustering-in-python-f6e46806aaee
 
@@ -20,11 +19,12 @@ https://www.techtrekking.com/how-to-plot-simple-and-candlestick-chart-using-pyth
 
 https://medium.com/mlreview/a-simple-deep-learning-model-for-stock-price-prediction-using-tensorflow-30505541d877
 
-- TensorFlow
+##### TensorFlow
 
 https://medium.com/analytics-vidhya/using-machine-learning-to-predict-stock-prices-c4d0b23b029a
 
 https://www.datacamp.com/community/tutorials/tensorflow-tutorial
+
 
 
 https://www.analyticsvidhya.com/blog/2018/10/predicting-stock-price-machine-learningnd-deep-learning-techniques-python/
@@ -46,22 +46,34 @@ https://www.investopedia.com/articles/trading/06/daytradingretail.asp
 https://www.investopedia.com/articles/active-trading/092315/5-most-powerful-candlestick-patterns.asp
 
 
-Long Short Term Memory (LSTM)
+##### Long Short Term Memory (LSTM)
+
 https://www.analyticsvidhya.com/blog/2017/12/fundamentals-of-deep-learning-introduction-to-lstm/
+
 https://pythonprogramming.net/rnn-tensorflow-python-machine-learning-tutorial/
-Walk-through:  https://towardsdatascience.com/lstm-by-example-using-tensorflow-feb0c1968537
+
+Walk-through
+
+https://towardsdatascience.com/lstm-by-example-using-tensorflow-feb0c1968537
 
 
-Deep Learning in Python
+##### Deep Learning in Python
+
 https://www.datacamp.com/courses/deep-learning-in-python?tap_a=5644-dce66f&tap_s=403848-a8173b
+
 https://machinelearningmastery.com/machine-learning-in-python-step-by-step/
+
 http://www.deeplearningbook.org/
 
 
-LSTM Time Series Classification
+##### LSTM Time Series Classification
+
 https://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
+
 https://burakhimmetoglu.com/2017/08/22/time-series-classification-with-tensorflow/
+
 http://www.deeplearningbook.org/
+
 
 
 https://towardsdatascience.com/predicting-stock-price-with-lstm-13af86a74944
