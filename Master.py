@@ -6,7 +6,7 @@
 #LIBRARIES
 import sys, os, shutil, statistics 
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
@@ -18,7 +18,7 @@ from mpl_finance import candlestick_ohlc
 
 #initialization
 Initialize = False
-Raw_Data_Folder = 'Raw_Data_Temp'
+Raw_Data_Folder = 'Raw_Data_Storage_5min'
 
 #clustering
 Clustering = True
@@ -36,42 +36,52 @@ Trade_Images = True
 class Cluster:
     
     def __init__(self, dataset):
+        
         self.dataset = dataset
+        
+        #self.Neighbors()
+        
         self.Clustering()
+        exit()        
+        if Analysis: self.Cluster_Analysis()
     
     def Clustering(self):
         #create K-Means classifier and fit data
-        km = KMeans(
-                n_clusters = Number_of_Clusters,
-                init = 'k-means++',
-                n_init = 10,
-                max_iter = 300,
-                tol = 1e-04,
-                precompute_distances = 'auto',
-                verbose = 0,
-                random_state=None,
-                copy_x = True,
-                n_jobs = 4,
-                algorithm = 'auto'
-                )
+        dbs = DBSCAN(
+                eps=0.008,
+                min_samples=100,
+                metric='minkowski', #euclidean
+                metric_params=None,
+                algorithm='auto',
+                leaf_size=30,
+                p=2,
+                n_jobs=None
+        )
         
         print('')
-        print('Applying Kmeans Clustering')
-        km.fit(self.dataset)
+        print('Applying DBSCAN Clustering')
+        dbs.fit(self.dataset)
         
         #reshape cluster labels and concatenate
-        self.labeled = np.concatenate((self.dataset, np.reshape(km.labels_, (-1, 1))), axis = 1)
+        self.labeled = np.concatenate((self.dataset, np.reshape(dbs.labels_, (-1, 1))), axis = 1)
         print('')
         print('Total Record Count:', len(self.dataset))
         print('')
         
+        #determine cluster names and remove -1 (noise data points)
+        self.labels = np.unique(dbs.labels_)
+        self.labels = self.labels.tolist()
+        print('')
+        print(self.labels)
+        print('')
+        if -1 in self.labels: self.labels.remove(-1)
+        
         #create avg cluster images
-        cluster_count = 0
-        while cluster_count < Number_of_Clusters:
+        for i in self.labels:
             #create array for specific cluster based on cluster_count, then remove cluster column, print number of records in cluster
-            clus = self.labeled[self.labeled[:,44] == cluster_count]
+            clus = self.labeled[self.labeled[:,44] == i]
             clus = np.delete(clus, 44, axis=1)
-            print('Record Count,' , cluster_count,':', len(clus))
+            print('Record Count,' , i,':', len(clus))
             
             #find  mean of columns and reformat cluster dataset from one averaged 44 column row to set of 11 ohlc records
             clusavg = clus.mean(axis=0)
@@ -83,19 +93,39 @@ class Cluster:
                 count += 1
 
             #configure plot, save image, and close
-            Candlestick_Plot(clusarray, cluster_count, 'Cluster_Images', cluster_count)
-            
-            cluster_count += 1
+            Candlestick_Plot(clusarray, i, 'Cluster_Images', i)
         
         #remove prediction portion of the array
         self.labeled_trimmed = np.delete(self.labeled, np.s_[24:44], axis=1)
         
         #save training_data to csv
         np.savetxt("Execution_Files\Training_Data.csv", self.labeled_trimmed, delimiter=",")
-        
-        #run analysis if indicated, return both arrays
-        if Analysis: self.Cluster_Analysis()
+
         return
+
+    def Neighbors(self):
+        
+        #https://towardsdatascience.com/machine-learning-clustering-dbscan-determine-the-optimal-value-for-epsilon-eps-python-example-3100091cfbc
+        
+        from sklearn.neighbors import NearestNeighbors
+        import seaborn as sns
+        sns.set()
+        print("")
+        print('Applying Nearest Neighbors Analysis')
+        
+        #we can calculate the distance from each point to its closest neighbour using the NearestNeighbors
+        #the point itself is included in n_neighbors
+        #the kneighbors method returns two arrays, one which contains the distance to the closest n_neighbors points and the other which contains the index for each of those points
+        neigh = NearestNeighbors(n_neighbors=2)
+        nbrs = neigh.fit(self.dataset)
+        distances, indices = nbrs.kneighbors(self.dataset)
+        
+        #next, we sort and plot results
+        distances = np.sort(distances, axis=0)
+        distances = distances[:,1]
+        plt.plot(distances)
+        plt.show()
+        exit()
 
     def Cluster_Analysis(self):
         #create labels and list of cluster plot names
