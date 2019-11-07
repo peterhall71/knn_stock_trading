@@ -1,7 +1,7 @@
 ###https://scikit-learn.org/stable/modules/clustering.html
 
 
-###Master_v1.2.py
+###Master.py
 
 #LIBRARIES
 import sys, os, shutil, statistics 
@@ -17,12 +17,14 @@ from mpl_finance import candlestick_ohlc
 #PARAMETERS
 
 #initialization
-Initialization = False
+Initialize = False
 Raw_Data_Folder = 'Raw_Data_Storage_5min'
 
 #clustering
 Clustering = True
+Reachability_Plot = True
 Analysis = False
+Number_of_Clusters = 15
 
 #exectution
 Account_Value = 60000
@@ -30,6 +32,210 @@ Order_Percentage = 0.01
 Trade_Images = True
 
 #FUNCTIONS & CLASSES
+
+
+class Cluster:
+    
+    def __init__(self, dataset):
+        
+        self.dataset = dataset
+        
+        #self.Neighbors()
+        
+        self.Clustering()
+        exit()        
+        if Analysis: self.Cluster_Analysis()
+    
+    def Clustering(self):
+        #create K-Means classifier and fit data
+        opt = OPTICS(
+                min_samples=5,
+                max_eps=0.01,
+                metric='minkowski',
+                p=2,
+                metric_params=None,
+                cluster_method='xi',
+                eps=None,
+                xi=0.05,
+                predecessor_correction=True,
+                min_cluster_size=0.005,
+                algorithm='auto',
+                leaf_size=30,
+                n_jobs=None
+                )
+        
+        
+        
+
+# I would assume there are two approaches to your task:
+
+#    1. Remove outlier first and then apply your clustering algorithm (for this step itself you may use clustering algorithms!). Please note that k-means itself is not a Soft Clustering algorithm so it does not model the overlaps. For that you may use algorithms like Fuzzy C-Means. There you can define an overlap by clusters for which the memberships of a sample are closer than a threshold.
+
+#    2. Ignore the outlier removal and just use more robust variations of K-means, e.g. K-medoids or K-Medians, to reduce the effect of outliers.
+
+#The last but not the least is to care about the dimensionality of the data. K-Means is not a proper algorithm for high dimensional setting and needs a dimensionality reduction step beforehand.
+
+        
+        print('')
+        print('Applying OPTICS Clustering')
+        opt.fit(self.dataset)
+        
+        if Reachability_Plot: self.Reachability_Plot(opt)
+        
+        #reshape cluster labels and concatenate
+        self.labeled = np.concatenate((self.dataset, np.reshape(opt.labels_, (-1, 1))), axis = 1)
+        print('')
+        print('Total Record Count:', len(self.dataset))
+        print('')
+        
+        #determine cluster names and remove -1 (noise data points)
+        self.labels = np.unique(opt.labels_)
+        self.labels = self.labels.tolist()
+        print('')
+        print(self.labels)
+        print('')
+        if -1 in self.labels: self.labels.remove(-1)
+        
+        #create avg cluster images
+        for i in self.labels:
+            #create array for specific cluster based on cluster_count, then remove cluster column, print number of records in cluster
+            clus = self.labeled[self.labeled[:,44] == i]
+            clus = np.delete(clus, 44, axis=1)
+            print('Record Count,' , i,':', len(clus))
+            
+            #find  mean of columns and reformat cluster dataset from one averaged 44 column row to set of 11 ohlc records
+            clusavg = clus.mean(axis=0)
+            clusarray = np.zeros((11,4))
+            count = 0
+            while (count*4) < 44:
+                #select index section, insert into clussarray, and index count (acting as the startpoint as well
+                clusarray[count] = clusavg[:][(count*4):(count*4 + 4)]
+                count += 1
+
+            #configure plot, save image, and close
+            Candlestick_Plot(clusarray, i, 'Cluster_Images', i)
+        
+        #remove prediction portion of the array
+        self.labeled_trimmed = np.delete(self.labeled, np.s_[24:44], axis=1)
+        
+        #save training_data to csv
+        np.savetxt("Execution_Files\Training_Data.csv", self.labeled_trimmed, delimiter=",")
+
+        return
+
+    def Reachability_Plot(self, opt):
+    
+        #https://scikit-learn.org/stable/auto_examples/cluster/plot_optics.html#sphx-glr-auto-examples-cluster-plot-optics-py
+    
+        import matplotlib.gridspec as gridspec
+    
+        space = np.arange(len(self.dataset))
+        reachability = opt.reachability_[opt.ordering_]
+        labels = opt.labels_[opt.ordering_]
+
+        plt.figure(figsize=(10, 7))
+        G = gridspec.GridSpec(2, 3)
+        ax1 = plt.subplot(G[0, :])
+        ax2 = plt.subplot(G[1, 0])
+        ax3 = plt.subplot(G[1, 1])
+        ax4 = plt.subplot(G[1, 2])
+
+        # Reachability plot
+        colors = ['g.', 'r.', 'b.', 'y.', 'c.']
+        for klass, color in zip(range(0, 5), colors):
+            Xk = space[labels == klass]
+            Rk = reachability[labels == klass]
+            ax1.plot(Xk, Rk, color, alpha=0.3)
+        ax1.plot(space[labels == -1], reachability[labels == -1], 'k.', alpha=0.3)
+        ax1.plot(space, np.full_like(space, 2., dtype=float), 'k-', alpha=0.5)
+        ax1.plot(space, np.full_like(space, 0.5, dtype=float), 'k-.', alpha=0.5)
+        ax1.set_ylabel('Reachability (epsilon distance)')
+        ax1.set_title('Reachability Plot')
+
+        plt.tight_layout()
+        plt.show()
+
+    def Neighbors(self):
+        
+        #https://towardsdatascience.com/machine-learning-clustering-dbscan-determine-the-optimal-value-for-epsilon-eps-python-example-3100091cfbc
+        
+        from sklearn.neighbors import NearestNeighbors
+        import seaborn as sns
+        sns.set()
+        print("")
+        print('Applying Nearest Neighbors Analysis')
+        
+        #we can calculate the distance from each point to its closest neighbour using the NearestNeighbors
+        #the point itself is included in n_neighbors
+        #the kneighbors method returns two arrays, one which contains the distance to the closest n_neighbors points and the other which contains the index for each of those points
+        neigh = NearestNeighbors(n_neighbors=2)
+        nbrs = neigh.fit(self.dataset)
+        distances, indices = nbrs.kneighbors(self.dataset)
+        
+        #next, we sort and plot results
+        distances = np.sort(distances, axis=0)
+        distances = distances[:,1]
+        plt.plot(distances)
+        plt.show()
+        exit()
+
+    def Cluster_Analysis(self):
+        #create labels and list of cluster plot names
+        labels = range(Number_of_Clusters)
+        cluster_plot_names = [cluster_plot_names.append('%d' %i) for i in labels]
+        
+        #split dataset into training data and clusters
+        X_analysis = self.labeled_trimmed[:,0:24]
+        Y_analysis = self.labeled_trimmed[:,24]
+
+        #split data to train and test on 80-20 ratio
+        X_train, X_test, y_train, y_test = train_test_split(X_analysis, Y_analysis, test_size = 0.2, random_state=None)
+
+        #create and train KNN classifier, make predictions on unseen test data
+        knn = KNN_Classifier()
+        knn.fit(X_train, y_train)
+        knn_predictions = knn.predict(X_test)
+        
+        #returns the coefficient of determination R^2 of the prediction, 1 is perfect prediction and 0 means that there is no linear relationship between X and y
+        #confusion matrix
+        print("")
+        print("Accuracy: {}%".format(classifier.score(X_test, y_test) * 100 ))
+        print("")
+        cm = confusion_matrix(y_test, clf_predictions, labels)
+        print(cm)
+        print("")
+
+class Initialization:
+    
+    def __init__(self):
+        self.complete_dataset = []
+        self.Load_Files()
+        
+    def Load_Files(self):
+        print('')
+        print('Loading Raw Data...')
+        
+        #read each file from Raw_Data, convert np.array to list of lists, iterate through to create new dataset, convert to numpy array
+        for file in os.listdir(r'.\%s' %Raw_Data_Folder):
+            raw_data = np.genfromtxt(os.path.join(Raw_Data_Folder, file), delimiter=',')
+            raw_data.tolist()
+            
+            #iterate through numpy array to create new dataset
+            for index, i in enumerate(raw_data):
+                
+                #select subsection, flatten list, check if list has 44 elements, normalize and append to primary_list
+                sublist = [item for sublist in raw_data[index: index + 11] for item in sublist]
+                
+                if len(sublist) <44: break
+                
+                self.complete_dataset.append([x/statistics.mean(sublist) for x in sublist])
+            
+            print(file)
+        
+        self.complete_dataset = np.array(self.complete_dataset)
+        np.savetxt("Execution_Files\Primary.csv", self.complete_dataset, delimiter=",")
+        
+        return
 
 class Test_Data:
     def __init__(self, name):
@@ -43,7 +249,7 @@ class Test_Data:
         self.knn_predictions = 0
         return
 
-    def Main_Loop(self):
+    def Trade_Loop(self):
         global Account_Value
         #update main_array, select next section to insert into main array, delete last row of main_array, add new array in index 0
         self.main_array = np.delete(self.main_array, 5, axis=0)
@@ -92,66 +298,6 @@ class Test_Data:
                 self.shares = 0
         return
 
-def Cluster(fit_array):
-    
-    ###https://scikit-learn.org/stable/modules/clustering.html#optics
-    ###https://github.com/dvida/cyoptics-clustering
-    
-    #create K-Means classifier and fit data
-    opt = OPTICS(
-            min_samples=5,
-            max_eps=np.inf,
-            metric='minkowski',
-            p=2,
-            metric_params=None,
-            cluster_method='xi',
-            eps=None,
-            xi=0.05,
-            predecessor_correction=True,
-            min_cluster_size=0.005,
-            algorithm='auto',
-            leaf_size=30,
-            n_jobs=None
-            )
-    
-    print('Applying OPTICS Clustering')
-    opt.fit(fit_array)
-    
-    #reshape cluster labels and concatenate
-    concatenated = np.concatenate((fit_array, np.reshape(opt.labels_, (-1, 1))), axis = 1)
-    print('Total Record Count: ', len(concatenated))
-    cluster_labels = np.unique(opt.labels_)
-    cluster_labels = cluster_labels.tolist()
-    print(cluster_labels)
-    cluster_labels.remove(-1)
-    
-    #create avg cluster images
-    for i in cluster_labels:
-        #create array for specific cluster based on cluster_count, then remove cluster column, print number of records in cluster
-        clus = concatenated[concatenated[:,44] == i]
-        clus = np.delete(clus, 44, axis=1)
-        print('Record Count,' , i,':', len(clus))
-        
-        #find  mean of columns and reformat cluster dataset from one averaged 44 column row to set of 11 ohlc records
-        clusavg = clus.mean(axis=0)
-        clusarray = np.zeros((11,4))
-        count = 0
-        while (count*4) < 44:
-            #select index section, insert into clussarray, and index count (acting as the startpoint as well
-            clusarray[count] = clusavg[:][(count*4):(count*4 + 4)]
-            count += 1
-
-        #configure plot, save image, and close
-        Candlestick_Plot(clusarray, i, 'Cluster_Images', i)
-    
-    #remove unclustered records, remove prediction portion of the array
-    concatenated = concatenated[np.isin(concatenated[:,24], -1, invert=True)]
-    concatenated_trimmed = np.delete(concatenated, np.s_[24:44], axis=1)
-    
-    #run analysis if indicated, return both arrays
-    if Analysis: Cluster_Analysis(concatenated_trimmed)
-    return concatenated, concatenated_trimmed
-
 def Delete_Create_Folder(folder):
     #delete folder and create new one
     try:
@@ -161,32 +307,6 @@ def Delete_Create_Folder(folder):
     except:
         os.mkdir(folder)
     return
-
-def Cluster_Analysis(analysis_data):
-    #create labels and list of cluster plot names
-    labels = range(cluster_count_start,(cluster_count_start + Number_of_Clusters))
-    cluster_plot_names = [cluster_plot_names.append('%d' %i) for i in labels]
-    
-    #split dataset into training data and clusters
-    X_analysis = analysis_data[:,0:24]
-    Y_analysis = analysis_data[:,24]
-
-    #split data to train and test on 80-20 ratio
-    X_train, X_test, y_train, y_test = train_test_split(X_analysis, Y_analysis, test_size = 0.2, random_state=None)
-
-    #create and train KNN classifier, make predictions on unseen test data
-    knn = KNN_Classifier()
-    knn.fit(X_train, y_train)
-    knn_predictions = knn.predict(X_test)
-    
-    #returns the coefficient of determination R^2 of the prediction, 1 is perfect prediction and 0 means that there is no linear relationship between X and y
-    #confusion matrix
-    print("")
-    print("Accuracy: {}%".format(classifier.score(X_test, y_test) * 100 ))
-    print("")
-    cm = confusion_matrix(y_test, clf_predictions, labels)
-    print(cm)
-    print("")
 
 def KNN_Classifier():
     knn = KNeighborsClassifier(
@@ -213,91 +333,72 @@ def Candlestick_Plot(plot_data, plot_title, Folder_name, file_name):
     plt.savefig(os.path.join(Folder_name, '%d.png' %file_name), bbox_inches='tight')
     plt.close()
 
-#INITILIZATION
+def Input_and_Convert(message):
+    while True:
+        try:
+            #take comma delimited input and convert to list of integers
+            print('')
+            cluster_list = input(message)
+            cluster_list = cluster_list.split(',')
+            cluster_list = [int(x.strip()) for x in cluster_list]
+            break
+        except:
+            print('Invalid entry, please try again') 
+    return cluster_list
 
-if Initialization:
-    
-    #read each file from Raw_Data, convert np.array to list of lists, iterate through to create new dataset, convert to numpy array
-    primary_list = []
-    print('\n','Loading Raw Data...')
-    for file in os.listdir(r'.\%s' %Raw_Data_Folder):
-        raw_data = np.genfromtxt(os.path.join(Raw_Data_Folder, file), delimiter=',')
-        raw_data.tolist()
-        #iterate through numpy array to create new dataset
-        for index, i in enumerate(raw_data):
-            #select subsection, flatten list, check if list has 44 elements, normalize and append to primary_list
-            sublist = [item for sublist in raw_data[index: index + 11] for item in sublist]
-            if len(sublist) <44: break
-            primary_list.append([x/statistics.mean(sublist) for x in sublist])
-        print(file)
-    
-    primary = np.array(primary_list)
-    np.savetxt("Execution_Files\Primary.csv", primary, delimiter=",")
-    
-else:
-    primary = np.genfromtxt('Execution_Files\Primary.csv', delimiter=',')
+def main():
+    #INITILIZATION
 
-#CLUSTERING
-
-if Clustering:
-    
     #delete and create a new folder for cluster images and trade images
     #turn interactive plotting off, this prevents matplotlib from dispalying all the plots, can still display with plt.show()
     Delete_Create_Folder("Cluster_Images")
     Delete_Create_Folder('Trade_Images')
     plt.ioff()
 
-    #cluster and assign labels, plot average clusters and save image to drive
-    print('')
-    primary_clusters, primary_clusters_trimmed = Cluster(primary)
+    if Initialize:
+        primary = Initialization()
+        primary_dataset = primary.complete_dataset
+    else: primary_dataset = np.genfromtxt('Execution_Files\Primary.csv', delimiter=',')
 
-    #delete downselected rows from primary and secondary arrays, concatenate primary_complete, secondary_complete, and teriary_clusters_trimmed
-    training_data = primary_clusters_trimmed
+    #CLUSTERING
+
+    if Clustering:
+        #cluster and assign labels, plot average clusters and save image to drive
+        clusters = Cluster(primary_dataset)
+        training_data = clusters.labeled_trimmed
+    else: training_data = np.genfromtxt('Execution_Files\Training_Data.csv', delimiter=',')
+
+    #EXECUTION
+
+    #prepare training data
+    X_train = training_data[:,0:24]
+    y_train = training_data[:,24]
+
+    #create and train KNN classifier
+    knn = KNN_Classifier()
+    knn.fit(X_train, y_train)
+
+    #take comma delimited input and convert to list of integers
+    buy_indicators = Input_and_Convert('Buy Indicators: ')
+
+    #load test datasets: X_test_1, X_test_2, etc. and initiate Main_Loop parameters
+    live_counter = 0
+    trade_record = []
+    Test_1 = Test_Data('X_test_1')
+    Test_2 = Test_Data('X_test_2')
+    test_array_list = [Test_1, Test_2]
+
+    while live_counter < len(Test_1.array) - 10:
+        
+        #increment live_counter
+        live_counter += 1
+        
+        for each in test_array_list:
+            each.Trade_Loop()
+
+    np.savetxt("Execution_Files\Trading_Record.csv", np.array(trade_record), delimiter=",")
+    print('Number of Trades:', len(trade_record))
+    print('Ending Account Value:', Account_Value)
     
-    #save training_data to csv
-    np.savetxt("Execution_Files\Training_Data.csv", np.array(training_data), delimiter=",")
-    exit()
+main()
 
-else:
-    #load ready made training data
-    training_data = np.genfromtxt('Execution_Files\Training_Data.csv', delimiter=',')
-
-#EXECUTION
-
-#prepare training data
-X_train = training_data[:,0:24]
-y_train = training_data[:,24]
-
-#create and train KNN classifier
-knn = KNN_Classifier()
-knn.fit(X_train, y_train)
-
-#take comma delimited input and convert to list of integers
-while True:
-    try:
-        #take comma delimited input and convert to list of integers
-        buy_indicators = input('Buy Indicators: ')
-        buy_indicators = cluster_list.split(',')
-        buy_indicators = [int(x.strip()) for x in buy_indicators]
-        break
-    except:
-        print('Invalid entry, please try again') 
-
-#load test datasets: X_test_1, X_test_2, etc. and initiate Main_Loop parameters
-live_counter = 0
-trade_record = []
-Test_1 = Test_Data('X_test_1')
-Test_2 = Test_Data('X_test_2')
-test_array_list = [Test_1, Test_2]
-
-while live_counter < len(Test_1.array) - 10:
-    
-    #increment live_counter
-    live_counter += 1
-    
-    for each in test_array_list:
-        each.Main_Loop()
-
-np.savetxt("Execution_Files\Trading_Record.csv", np.array(trade_record), delimiter=",")
-print('Number of Trades:', len(trade_record))
-print('Ending Account Value:', Account_Value)
