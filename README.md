@@ -1,5 +1,26 @@
-# Automated_Trading_Program
+# K-Nearest Neighbors Stock Trading
 
-Will fill out readme with infomation on program
+#### 0_DataAcquisition.py
 
-Program needs some heavy updates as well
+Script for interfacing with IB API to fetch historic data from IB servers.
+
+#### 1_QueryData.R
+
+Short R script for fetching ticker data from MySQL server.
+
+#### 2_Preprocessing.R
+
+
+#### 3_KMeans.py
+
+
+#### 4_Master.py
+
+
+#### 5_OrderPlacement.py
+
+
+#### Cluster_Images
+
+
+#### Trade_Images
